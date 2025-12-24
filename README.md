@@ -1,261 +1,279 @@
-Here you go, Daniel — a **clean, professional, onboarding‑ready README** tailored to the full enhanced stack you’re building. It’s written the way you’d hand it to a team: explicit, reproducible, and operationally clear.
+Here’s a polished, onboarding‑ready **README.md** for your full stack:  
+Apache Iceberg + Nessie + Dremio + PySpark + VS Code Dev Containers + external MinIO.
 
-If you want, I can also generate a **diagram**, **quickstart cheatsheet**, or **Iceberg demo notebook** to accompany it.
-
----
-
-# **README — Local Lakehouse Stack (Nessie + Iceberg + MinIO + Spark + Dremio)**
-
-This repository provides a fully integrated **local lakehouse environment** built on:
-
-- **Nessie** — Git‑like catalog for Iceberg  
-- **MinIO** — S3‑compatible object store  
-- **Apache Spark 3.5** — Compute engine with Jupyter Lab  
-- **Dremio OSS** — SQL engine + UI for Iceberg  
-- **Nessie UI** — Web interface for branches, commits, tables  
-- **MinIO Bootstrap** — Automated bucket creation + IAM‑style policies  
-
-The stack is designed for **reproducible, production‑grade local development**, with explicit ordering, isolated credentials, and clean networking.
+I’ve written it the way you like—explicit, deterministic, and clean enough for new hires to follow without friction.
 
 ---
 
-# **1. Architecture Overview**
+# **README.md**  
+## **Iceberg + Nessie + Dremio + PySpark Development Environment (with VS Code Dev Containers & external MinIO)**
+
+This repository provides a fully reproducible local development environment for working with:
+
+- **Apache Iceberg**  
+- **Project Nessie** (catalog + versioning)  
+- **Dremio** (SQL engine + UI)  
+- **PySpark** (Iceberg‑aware Spark runtime)  
+- **MinIO (external deployment)** as the S3 object store  
+- **VS Code Dev Containers** as the primary IDE  
+
+The goal is to give developers a clean, deterministic, onboarding‑friendly environment for building and testing Iceberg‑based data workflows.
+
+---
+
+## **Architecture Overview**
 
 ```
-                   ┌──────────────────────────┐
-                   │        Nessie UI          │
-                   │    http://localhost:19121 │
-                   └──────────────┬───────────┘
-                                  │
-                     ┌────────────▼────────────┐
-                     │        Nessie API        │
-                     │   http://localhost:19120 │
-                     └────────────┬────────────┘
-                                  │
-                     ┌────────────▼────────────┐
-                     │       Spark Master       │
-                     │  Jupyter @ :8888         │
-                     └────────────┬────────────┘
-                                  │
-                     ┌────────────▼────────────┐
-                     │      Spark Worker        │
-                     └────────────┬────────────┘
-                                  │
-                     ┌────────────▼────────────┐
-                     │         Dremio           │
-                     │  http://localhost:9047   │
-                     └────────────┬────────────┘
-                                  │
-                     ┌────────────▼────────────┐
-                     │         MinIO            │
-                     │  http://localhost:9000   │
-                     └──────────────────────────┘
++-------------------+       +-------------------+
+|     PySpark       | <---> |     Nessie        |
+|  (Dev Container)  |       |   Catalog API     |
++-------------------+       +-------------------+
+          |                           |
+          |                           |
+          v                           v
++------------------------------------------------+
+|                MinIO (external)                |
+|     S3-compatible object storage backend       |
+|     Bucket: warehouse                          |
++------------------------------------------------+
+          ^
+          |
++-------------------+
+|      Dremio       |
+|  SQL + UI Engine  |
++-------------------+
 ```
 
 ---
 
-# **2. Prerequisites**
+## **Prerequisites**
 
-- Docker  
-- Docker Compose v2  
-- 8GB RAM minimum (recommended 16GB)  
-- Ports available:
-  - 9000–9001 (MinIO)
-  - 19120–19121 (Nessie)
-  - 7077, 8080–8081, 8888, 18080 (Spark)
-  - 9047, 31010, 32010, 45678 (Dremio)
+Before starting, ensure you have:
 
----
-
-# **3. Quick Start**
-
-### **Start the entire stack**
-
-```bash
-docker compose up -d
-```
-
-### **Stop everything**
-
-```bash
-docker compose down
-```
-
-### **Stop and remove volumes**
-
-```bash
-docker compose down -v
-```
+- **Docker** (or OrbStack)  
+- **VS Code**  
+- **VS Code Dev Containers extension**  
+- A running **MinIO** instance (external)  
+  - Endpoint: `http://minio.orb.local:9000`  
+  - Access Key: `danray`  
+  - Secret Key: `Welcome_123456`  
+  - Bucket: `warehouse`
 
 ---
 
-# **4. Service Endpoints**
-
-| Service       | URL / Port | Notes |
-|---------------|------------|-------|
-| **Nessie API** | http://localhost:19120 | Iceberg catalog REST endpoint |
-| **Nessie UI** | http://localhost:19121 | Browse branches, commits, tables |
-| **MinIO Console** | http://localhost:9001 | S3 browser |
-| **MinIO S3 Endpoint** | http://localhost:9000 | Use in Spark/Dremio |
-| **Spark Master UI** | http://localhost:8080 | Cluster overview |
-| **Spark Worker UI** | http://localhost:8081 | Worker metrics |
-| **Spark History Server** | http://localhost:18080 | Job history |
-| **Jupyter Lab** | http://localhost:8888 | No token/password |
-| **Dremio UI** | http://localhost:9047 | SQL + Iceberg exploration |
-
----
-
-# **5. MinIO Buckets & IAM Setup**
-
-The `minio-init` service automatically:
-
-### **Creates buckets**
-- `datalake`
-- `datalakehouse`
-- `warehouse`
-- `seed`
-
-### **Creates IAM-style user**
-```
-username: sparkuser
-password: sparkpassword
-```
-
-### **Applies policy**
-`datalake-readwrite.json` → grants full access to `datalake/*`.
-
-You can add more policies in `./minio-policies`.
-
----
-
-# **6. Spark Configuration (Iceberg + Nessie)**
-
-Inside Jupyter, configure Spark like this:
-
-```python
-spark = (
-    SparkSession.builder.appName("iceberg")
-    .config("spark.sql.catalog.nessie", "org.apache.iceberg.spark.SparkCatalog")
-    .config("spark.sql.catalog.nessie.catalog-impl", "org.apache.iceberg.nessie.NessieCatalog")
-    .config("spark.sql.catalog.nessie.uri", "http://nessie:19120/api/v1")
-    .config("spark.sql.catalog.nessie.ref", "main")
-    .config("spark.sql.catalog.nessie.authentication.type", "NONE")
-    .config("spark.sql.catalog.nessie.warehouse", "s3a://datalake/")
-    .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000")
-    .config("spark.hadoop.fs.s3a.access.key", "admin")
-    .config("spark.hadoop.fs.s3a.secret.key", "password")
-    .config("spark.hadoop.fs.s3a.path.style.access", "true")
-    .getOrCreate()
-)
-```
-
----
-
-# **7. Dremio Configuration**
-
-### **Add MinIO as an S3 Source**
-In Dremio UI:
-
-- **Source Type:** Amazon S3  
-- **Access Key:** `admin`  
-- **Secret Key:** `password`  
-- **Root Path:** `/`  
-- **Enable compatibility mode:** ✔  
-- **Endpoint:** `http://minio:9000`  
-- **Encryption:** Off (unless TLS enabled)
-
-### **Add Nessie as an Iceberg Catalog**
-- **Type:** Nessie  
-- **REST API URL:** `http://nessie:19120/api/v1`  
-- **Authentication:** None  
-- **Default branch:** `main`  
-- **Warehouse:** `s3a://datalake/`
-
----
-
-# **8. Example: Create an Iceberg Table in Spark**
-
-```python
-spark.sql("""
-CREATE TABLE nessie.demo.customers (
-    id INT,
-    name STRING,
-    country STRING
-)
-USING iceberg
-""")
-```
-
-Verify in Nessie UI → `main` branch → `demo.customers`.
-
----
-
-# **9. Example: Query the Table in Dremio**
-
-In Dremio SQL Runner:
-
-```sql
-SELECT * FROM nessie.demo.customers;
-```
-
----
-
-# **10. Directory Structure**
+## **Repository Structure**
 
 ```
 .
 ├── docker-compose.yml
-├── nessie-data/
-├── minio-data/
-├── minio-seed/
-├── minio-policies/
-│   └── datalake-readwrite.json
-├── notebook-seed/
+├── Makefile
+├── workspace/
+│   ├── notebooks/
+│   ├── scripts/
+│   └── .devcontainer/
+│       ├── devcontainer.json
+│       └── Dockerfile
 └── README.md
 ```
 
 ---
 
-# **11. Troubleshooting**
+## **1. Starting the Environment**
 
-### **Spark cannot access MinIO**
-- Ensure `path.style.access=true`
-- Ensure endpoint is `http://minio:9000`
-- Ensure buckets exist (`minio-init` must complete)
+Use the Makefile for deterministic startup:
 
-### **Dremio cannot read Iceberg tables**
-- Check Nessie URL: `http://nessie:19120/api/v1`
-- Ensure warehouse path matches Spark
+```bash
+make up
+```
 
-### **Nessie UI shows no tables**
-- Ensure Spark wrote to `nessie` catalog
-- Ensure branch is `main`
+This launches:
 
-### **MinIO console not loading**
-- Check port 9001 availability
-- Restart MinIO: `docker compose restart minio`
+- Nessie  
+- Dremio  
+- PySpark dev container  
+
+To stop everything:
+
+```bash
+make down
+```
+
+To view logs:
+
+```bash
+make logs
+```
 
 ---
 
-# **12. Extending the Stack**
+## **2. Opening the Project in VS Code**
+
+1. Open VS Code  
+2. Press **Ctrl+Shift+P**  
+3. Select:  
+   **Dev Containers: Open Folder in Container**  
+4. Choose the `workspace/` folder  
+
+VS Code will build the dev container using:
+
+```
+workspace/.devcontainer/Dockerfile
+```
+
+You now have:
+
+- Python  
+- PySpark  
+- Iceberg libraries  
+- Jupyter  
+- Full S3 + Nessie connectivity  
+
+---
+
+## **3. Launching PySpark (Iceberg‑ready)**
+
+You can launch PySpark in two ways:
+
+### **Option A — VS Code Task**
+
+Press **Ctrl+Shift+P** →  
+**Tasks: Run Task** →  
+Select **Launch PySpark (Iceberg)**
+
+### **Option B — Makefile**
+
+```bash
+make pyspark
+```
+
+This starts PySpark with:
+
+- Iceberg runtime  
+- Nessie catalog  
+- MinIO S3 backend  
+- Path‑style access  
+- SSL disabled (local dev)  
+
+---
+
+## **4. Connecting Dremio**
+
+Open Dremio UI:
+
+```
+http://localhost:9047
+```
+
+### **Add MinIO as S3 Source**
+
+- Access Key: `danray`  
+- Secret Key: `Welcome_123456`  
+- Endpoint: `http://minio.orb.local:9000`  
+- Enable: **Compatibility Mode**  
+- Root Path: `warehouse`
+
+### **Add Nessie Source**
+
+- Endpoint: `http://nessie:19120/api/v2`  
+- Default branch: `main`  
+- Warehouse: `s3a://warehouse/`
+
+---
+
+## **5. Creating Iceberg Tables in PySpark**
+
+Example:
+
+```python
+spark.sql("""
+CREATE TABLE nessie.db.sample (
+    id INT,
+    name STRING
+)
+USING iceberg
+""")
+```
+
+Data will be stored in:
+
+```
+s3a://warehouse/db/sample/
+```
+
+---
+
+## **6. Jupyter Notebooks**
+
+Inside the dev container:
+
+```bash
+jupyter notebook --ip=0.0.0.0 --allow-root
+```
+
+VS Code will auto-detect the server.
+
+---
+
+## **7. Troubleshooting**
+
+### **MinIO permissions**
+Ensure MinIO’s backend directory is writable:
+
+```bash
+sudo chown -R minio-user:minio-user /mnt/data
+sudo chmod -R u+rxw /mnt/data
+```
+
+### **Nessie health**
+Check:
+
+```bash
+curl http://localhost:19120/api/v2/config
+```
+
+### **PySpark package mismatch**
+Ensure Iceberg runtime matches Spark version:
+
+```
+org.apache.iceberg:iceberg-spark-runtime-3.4_2.12:1.5.0
+```
+
+---
+
+## **8. Extending the Environment**
 
 You can easily add:
 
-- TLS for MinIO  
-- Additional Spark workers  
-- A dedicated Spark History volume  
-- A Nessie PostgreSQL backend  
-- A Dremio coordinator/executor split  
+- Spark History Server  
+- Dremio executor nodes  
+- Iceberg REST catalog  
+- DuckDB integration  
+- Fugue or Ray for distributed workflows  
 
-Ask if you want templates for any of these.
+Just extend the Compose file or Dev Container.
 
 ---
 
-If you want, I can also generate:
+## **9. Summary**
 
-- A **quickstart notebook** that creates Iceberg tables  
-- A **diagram** of the full data flow  
-- A **team‑ready onboarding PDF**  
-- A **Makefile** for common commands  
+This environment gives you:
 
-Just tell me what direction you want to take this next.
+- A fully reproducible Iceberg development stack  
+- VS Code as a first‑class IDE  
+- Seamless integration with external MinIO  
+- PySpark configured for Iceberg + Nessie  
+- Dremio for SQL + UI exploration  
+- Clean onboarding for new engineers  
+
+It’s designed for clarity, determinism, and long‑term maintainability.
+
+---
+
+If you'd like, I can also generate:
+
+- A sample Iceberg notebook  
+- A bootstrap script that creates Nessie branches + tables  
+- A CI workflow for validating the stack  
+- A diagram for the README  
+
+Just tell me what you want next.
