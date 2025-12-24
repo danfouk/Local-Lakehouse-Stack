@@ -49,8 +49,8 @@ Before starting, ensure you have:
 - **VS Code Dev Containers extension**  
 - A running **MinIO** instance (external)  
   - Endpoint: `http://minio.orb.local:9000`  
-  - Access Key: `danray`  
-  - Secret Key: `Welcome_123456`  
+  - Access Key: `xxxxxxx`  
+  - Secret Key: `xxxxxxxx`  
   - Bucket: `warehouse`
 
 ---
@@ -160,8 +160,8 @@ http://localhost:9047
 
 ### **Add MinIO as S3 Source**
 
-- Access Key: `danray`  
-- Secret Key: `Welcome_123456`  
+- Access Key: `xxxxxxxx`  
+- Secret Key: `xxxxxxxxxxx`  
 - Endpoint: `http://minio.orb.local:9000`  
 - Enable: **Compatibility Mode**  
 - Root Path: `warehouse`
