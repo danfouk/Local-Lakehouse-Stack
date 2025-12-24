@@ -1,9 +1,3 @@
-Here’s a polished, onboarding‑ready **README.md** for your full stack:  
-Apache Iceberg + Nessie + Dremio + PySpark + VS Code Dev Containers + external MinIO.
-
-I’ve written it the way you like—explicit, deterministic, and clean enough for new hires to follow without friction.
-
----
 
 # **README.md**  
 ## **Iceberg + Nessie + Dremio + PySpark Development Environment (with VS Code Dev Containers & external MinIO)**
