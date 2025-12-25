@@ -1,0 +1,119 @@
+# ------------------------------------------------------------
+# Base: Ubuntu 24.04
+# ------------------------------------------------------------
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ------------------------------------------------------------
+# System Dependencies
+# ------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    wget \
+    curl \
+    git \
+    openjdk-17-jdk \
+    python3.12 \
+    python3.12-dev \
+    python3.12-venv \
+    libssl-dev \
+    libffi-dev \
+    liblzma-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    zlib1g-dev \
+    python3-yaml \
+    && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------
+# Create Python Virtual Environment
+# ------------------------------------------------------------
+RUN python3.12 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip inside venv
+RUN pip install --upgrade pip
+
+# ------------------------------------------------------------
+# Spark Installation
+# ------------------------------------------------------------
+ARG SPARK_VERSION=3.5.7
+ARG HADOOP_VERSION=3
+
+RUN wget -q https://dlcdn.apache.org/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
+    tar -xzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
+    mv spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark && \
+    rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
+
+# Set Spark environment variables
+ENV SPARK_HOME=/opt/spark
+ENV PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH
+ENV PYSPARK_PYTHON=/opt/venv/bin/python
+ENV PYSPARK_DRIVER_PYTHON=/opt/venv/bin/python
+# Copy Spark / Hadoop configuration
+COPY conf/core-site.xml $SPARK_HOME/conf/core-site.xml
+COPY conf/spark-defaults.conf $SPARK_HOME/conf/spark-defaults.conf
+
+# ------------------------------------------------------------
+# Python Libraries (installed inside venv)
+# ------------------------------------------------------------
+RUN pip install --no-cache-dir \
+    jupyterlab \
+    scipy \
+    findspark \
+    getdaft[all] \
+    sqlframe[all] \
+    ipywidgets \
+    ibis-framework[all] \
+    notebook \
+    pandas \
+    numpy \
+    matplotlib \
+    seaborn \
+    lightgbm \
+    dask \
+    statsmodels \
+    plotly \
+    openpyxl \
+    pyarrow \
+    sqlalchemy \
+    psycopg2-binary \
+    requests \
+    beautifulsoup4 \
+    lxml \
+    duckdb \
+    polars \
+    pyspark \
+    dremio-simple-query \
+    boto3 \
+    s3fs \
+    minio \
+    pyiceberg[gcsfs,adlfs,s3fs,sql-postgres,glue,hive]==0.10.0 \
+    datafusion
+
+
+# ------------------------------------------------------------
+# Ports
+# ------------------------------------------------------------
+EXPOSE 8888 4040 7077 8080 18080 6066 7078 8081
+
+# ------------------------------------------------------------
+# Workspace
+# ------------------------------------------------------------
+WORKDIR /workspace
+
+# Set umask globally
+RUN echo "umask 000" >> /etc/profile
+
+# ------------------------------------------------------------
+# Startup: Spark Master + Worker + JupyterLab
+# ------------------------------------------------------------
+CMD ["/bin/bash", "-c", "\
+    source /etc/profile && \
+    start-master.sh && \
+    start-worker.sh spark://$(hostname):7077 && \
+    jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root \
+        --NotebookApp.token='' --NotebookApp.password='' \
+"]
