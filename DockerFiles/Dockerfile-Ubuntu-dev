@@ -1,0 +1,57 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ------------------------------------------------------------
+# Base system packages
+# ------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-venv \
+    openjdk-17-jdk \
+    curl wget git jq unzip \
+    build-essential \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------
+# AWS CLI v2 (ARM64)
+# ------------------------------------------------------------
+RUN curl -L "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip" \
+    && unzip -q awscliv2.zip \
+    && ./aws/install \
+    && rm -rf aws awscliv2.zip
+
+# ------------------------------------------------------------
+# MinIO Client (ARM64)
+# ------------------------------------------------------------
+RUN curl -s https://dl.min.io/client/mc/release/linux-arm64/mc -o /usr/local/bin/mc \
+    && chmod +x /usr/local/bin/mc
+
+# Python virtual environment (optional for other tools)
+RUN python3 -m venv /opt/pyenv \
+    && /opt/pyenv/bin/pip install --upgrade pip
+
+ENV PATH="/opt/pyenv/bin:${PATH}"
+
+# ------------------------------------------------------------
+# Nessie CLI (ARM64)
+# ------------------------------------------------------------
+RUN NESSIE_VERSION="0.99.0" \
+    && curl -L -o /usr/local/bin/nessie \
+       "https://github.com/projectnessie/nessie/releases/download/${NESSIE_VERSION}/nessie-${NESSIE_VERSION}-linux-aarch64" \
+    && chmod +x /usr/local/bin/nessie
+
+# ------------------------------------------------------------
+# PyIceberg CLI (recommended Iceberg CLI)
+# ------------------------------------------------------------
+RUN python3 -m venv /opt/pyenv \
+    && /opt/pyenv/bin/pip install --upgrade pip \
+    && /opt/pyenv/bin/pip install pyiceberg
+
+ENV PATH="/opt/pyenv/bin:${PATH}"
+
+
+
+WORKDIR /workspace
+
+CMD ["bash", "-c", "echo 'Ubuntu Dev container ready.' && sleep infinity"]
